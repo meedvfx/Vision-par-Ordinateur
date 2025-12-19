@@ -66,8 +66,6 @@ def predict_dl_class(image, model):
     results = [(pred[1], float(pred[2])) for pred in decoded_preds]
 
     return results
-[1], float(pred[2])) for pred in decoded_preds]
-    return results
 
 # --- Custom Model Logic ---
 
