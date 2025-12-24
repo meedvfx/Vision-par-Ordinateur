@@ -1,268 +1,290 @@
 import streamlit as st
-import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-import utils
-import preprocessing
-import segmentation
-import classifier
+import cv2
+from PIL import Image
+import os
+import sys
 
-# Set page config
-st.set_page_config(page_title="Object Recognition System", layout="wide")
+# Add src to path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
+from preprocessing import apply_histogram_equalization, apply_gaussian_blur, apply_median_blur, convert_color_space, apply_sobel, apply_laplacian
+from segmentation import apply_otsu_threshold, apply_kmeans_segmentation, apply_watershed_segmentation, apply_simple_threshold, apply_gmm_segmentation
+from analysis import apply_canny_edge_detection, extract_geometric_features, draw_features, extract_color_histogram
+from classifier import ImageClassifier
+
+st.set_page_config(page_title="CV Mastery Project", layout="wide")
+
+# Load Custom CSS
+def load_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+load_css('style.css')
+
+st.title("Vision Par Ordinateur - Du Pixel au Deep Learning")
 st.markdown("""
-<style>
-    /* Import Font */
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-
-    /* Global Styles */
-    html, body, [class*="css"] {
-        font-family: 'Poppins', sans-serif;
-        color: #2d3436;
-    }
-
-    /* Background Logic */
-    .reportview-container {
-        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-        background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
-    }
-
-    @keyframes gradient {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-
-    /* Sidebar Glassmorphism */
-    .sidebar .sidebar-content {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    /* Main Content Styling */
-    h1 {
-        font-weight: 700;
-        color: #2d3436;
-        text-align: center;
-        padding: 20px;
-        background: rgba(255,255,255,0.7);
-        border-radius: 15px;
-        backdrop-filter: blur(5px);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-        margin-bottom: 30px;
-    }
-
-    h2, h3, h4 {
-        color: #2d3436;
-        font-weight: 600;
-    }
-
-    /* Cards / Containers */
-    .stImage {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .stImage:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 30px rgba(0,0,0,0.25);
-    }
-
-    /* Buttons with Pulse Animation */
-    .stButton>button {
-        background: linear-gradient(45deg, #6c5ce7, #a29bfe);
-        color: white;
-        border: none;
-        padding: 12px 28px;
-        border-radius: 50px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 20px rgba(108, 92, 231, 0.6);
-        background: linear-gradient(45deg, #5b4cc4, #8e7ce6);
-    }
-
-    /* File Uploader */
-    .stFileUploader > div > div > button {
-        background-color: #00cec9;
-        color: white;
-    }
-    
-    /* Metrics */
-    div[data-testid="stMetricValue"] {
-        font-size: 36px;
-        background: -webkit-linear-gradient(#00b894, #00cec9);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 800;
-    }
-
-    /* Expander */
-    .streamlit-expanderHeader {
-        background-color: rgba(255,255,255,0.8);
-        border-radius: 10px;
-    }
-    
-    /* Divider */
-    hr {
-        border-color: rgba(0,0,0,0.1);
-        margin: 30px 0;
-    }
-
-</style>
-""", unsafe_allow_html=True)
-
-st.title("🔎 Object Recognition System (CV Project)")
+Ce projet démontre les différentes étapes de la Vision par Ordinateur :
+1. **Preprocessing** (Nettoyage)
+2. **Segmentation** (Isolation)
+3. **Analyse Classique** (Mesures)
+4. **Deep Learning** (Classification)
+""")
 
 # Sidebar
-st.sidebar.header("Configuration")
-uploaded_file = st.sidebar.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+st.sidebar.title("Navigation")
+app_mode = st.sidebar.selectbox("Choisir le Niveau",
+    ["1. Preprocessing (Nettoyer)", 
+     "2. Segmentation (Isoler)", 
+     "3. Analyse Classique (Mesurer)", 
+     "4. Deep Learning (Classifier)"])
+
+# File Uploader
+uploaded_file = st.sidebar.file_uploader("Choisissez une image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    # Load Image
-    image = utils.load_image(uploaded_file)
-    
-    # Display Original
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Original Image")
-        st.image(image, use_container_width=True)
-    
-    # Pipeline Selection
-    option = st.sidebar.selectbox(
-        "Select Pipeline Stage",
-        ("Preprocessing", "Segmentation", "Image Analysis", "Classification")
-    )
-    
-    if option == "Preprocessing":
-        st.header("1. Preprocessing")
-        
-        # Grayscale
-        gray = preprocessing.to_gray(image)
-        st.subheader("Grayscale")
-        st.image(gray, clamp=True, channels='GRAY', use_container_width=True)
-        
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            # HSV
-            hsv = preprocessing.to_hsv(image)
-            st.subheader("HSV Color Space")
-            st.image(hsv, use_container_width=True)
-            
-        with col_p2:
-            # Equalized
-            eq = preprocessing.equalize_histogram(image)
-            st.subheader("Histogram Equalization")
-            st.image(eq, use_container_width=True)
-        
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            # Gaussian
-            st.subheader("Gaussian Blur")
-            k_gauss = st.slider("Kernel Size (Gaussian)", 1, 15, 5, step=2)
-            gauss = preprocessing.gaussian_blur(image, k_gauss)
-            st.image(gauss, use_container_width=True)
-            
-        with col_f2:
-            # Median
-            st.subheader("Median Blur")
-            k_median = st.slider("Kernel Size (Median)", 1, 15, 5, step=2)
-            median = preprocessing.median_blur(image, k_median)
-            st.image(median, use_container_width=True)
-            
-        st.divider()
-        st.subheader("Advanced Processing")
-        col_a1, col_a2 = st.columns(2)
-        with col_a1:
-            st.write("**Sharpening**")
-            sharp = preprocessing.sharpen_image(image)
-            st.image(sharp, use_container_width=True)
-        with col_a2:
-            st.write("**Morphological (Dilation)**")
-            dilated = preprocessing.morphological_ops(image, 'dilation')
-            st.image(dilated, use_container_width=True)
-
-    elif option == "Segmentation":
-        st.header("2. Segmentation")
-        
-        col_s1, col_s2, col_s3 = st.columns(3)
-        
-        with col_s1:
-            st.subheader("Otsu Thresholding")
-            thresh = segmentation.otsu_thresholding(image)
-            st.image(thresh, clamp=True, channels='GRAY', use_container_width=True)
-            
-        with col_s2:
-            st.subheader("K-Means Clustering")
-            k_value = st.slider("Clusters (k)", 2, 10, 3)
-            kmeans = segmentation.kmeans_segmentation(image, k=k_value)
-            st.image(kmeans, use_container_width=True)
-            
-        with col_s3:
-            st.subheader("Canny Edge Detection")
-            t1 = st.slider("Threshold 1", 0, 255, 100)
-            t2 = st.slider("Threshold 2", 0, 255, 200)
-            edges = cv2.Canny(image, t1, t2)
-            st.image(edges, clamp=True, channels='GRAY', use_container_width=True)
-            
-    elif option == "Image Analysis":
-        st.header("3. Image Analysis")
-        
-        # Color Histogram
-        st.subheader("Color Histogram")
-        hist_features = preprocessing.extract_color_histogram(image)
-        
-        # Plot Histogram
-        fig, ax = plt.subplots()
-        ax.plot(hist_features)
-        ax.set_title("Flattened Color Histogram")
-        st.pyplot(fig)
-        st.write(f"Feature Vector Size: {len(hist_features)}")
-
-
-
-    elif option == "Classification":
-        st.header("4. Classification")
-        
-        model_type = st.radio("Select Model Type", ("Pre-trained (MobileNetV2)", "Custom Model (Caltech-101)"))
-
-        if st.button("Classify Object"):
-            with st.spinner("Classifying..."):
-                
-                if model_type == "Pre-trained (MobileNetV2)":
-                    model_cls = classifier.load_dl_model("MobileNetV2")
-                    results = classifier.predict_dl_class(image, model_cls)
-                    
-                    st.success("Analysis Complete!")
-                    for i, (label, prob) in enumerate(results):
-                        st.write(f"**{i+1}. {label}**: {prob*100:.2f}%")
-                        st.progress(prob)
-                        
-                else: # Custom Model
-                    import os
-                    model_path = "model/caltech101_model.h5"
-                    label_path = "model/caltech101_labels.json"
-                    
-                    if os.path.exists(model_path):
-                        model_custom = classifier.load_custom_model(model_path)
-                        labels = classifier.load_labels(label_path)
-                        
-                        if model_custom:
-                            label, prob = classifier.predict_custom_model(image, model_custom, labels)
-                            st.success("Analysis Complete!")
-                            st.metric(label="Predicted Class", value=label, delta=f"{prob*100:.2f}% Confidence")
-                        else:
-                            st.error("Failed to load custom model.")
-                    else:
-                        st.warning(f"Custom model not found at {model_path}. Please train it first using the notebook.")
-
+    image = Image.open(uploaded_file)
+    image_np = np.array(image)
+    # Convert RGB to BGR for OpenCV
+    image_cv = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
 else:
-    st.info("Please upload an image to start.")
+    st.info("Veuillez uploader une image pour commencer.")
+    st.stop()
+
+# Display Original
+col1, col2 = st.columns(2)
+with col1:
+    st.subheader("Image Originale")
+    st.image(image, use_container_width=True)
+
+# Logic based on mode
+if app_mode == "1. Preprocessing (Nettoyer)":
+    st.sidebar.subheader("Hyperparamètres")
+    
+    op = st.sidebar.radio("Opération", ["Color Space Conversion", "Histogram Equalization (CLAHE)", "Gaussian Blur", "Median Blur"])
+    
+    processed_img = None
+    
+    if op == "Color Space Conversion":
+        space = st.sidebar.selectbox("Espace", ["HSV", "YUV", "GRAY"])
+        processed_img = convert_color_space(image_cv, space)
+        
+    elif op == "Histogram Equalization (CLAHE)":
+        clip_limit = st.sidebar.slider("Clip Limit (Contraste)", 1.0, 10.0, 2.0)
+        processed_img = apply_histogram_equalization(image_cv, clip_limit=clip_limit)
+        
+    elif op == "Gaussian Blur":
+        k_size = st.sidebar.slider("Kernel Size (Impair)", 3, 21, 5, step=2)
+        processed_img = apply_gaussian_blur(image_cv, kernel_size=k_size)
+        
+    elif op == "Median Blur":
+        k_size = st.sidebar.slider("Kernel Size (Impair)", 3, 21, 5, step=2)
+        processed_img = apply_median_blur(image_cv, kernel_size=k_size)
+
+    elif op == "Sobel Filter":
+        processed_img = apply_sobel(image_cv)
+        
+    elif op == "Laplacian Filter":
+        processed_img = apply_laplacian(image_cv)
+    
+    if processed_img is not None:
+        with col2:
+            st.subheader("Résultat Preprocessing")
+            st.image(cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB), use_container_width=True)
+
+elif app_mode == "2. Segmentation (Isoler)":
+    st.sidebar.subheader("Méthode")
+    method = st.sidebar.selectbox("Algorithme", ["Simple Thresholding", "Otsu Thresholding", "K-Means Clustering", "GMM Clustering", "Watershed"])
+    
+    processed_img = None
+    
+    if method == "Simple Thresholding":
+        thresh_val = st.sidebar.slider("Seuil", 0, 255, 127)
+        processed_img = apply_simple_threshold(image_cv, thresh_val)
+
+    elif method == "Otsu Thresholding":
+        binary = apply_otsu_threshold(image_cv)
+        processed_img = binary  # Grayscale result
+        st.write("Otsu calcule automatiquement le seuil optimal.")
+        
+    elif method == "K-Means Clustering":
+        k = st.sidebar.slider("Nombre de Clusters (K)", 2, 10, 3)
+        processed_img = apply_kmeans_segmentation(image_cv, k=k)
+
+    elif method == "GMM Clustering":
+        n = st.sidebar.slider("Nombre de Composantes (GMM)", 2, 10, 3)
+        processed_img = apply_gmm_segmentation(image_cv, n_components=n)
+        
+    elif method == "Watershed":
+        img_w, markers = apply_watershed_segmentation(image_cv)
+        processed_img = img_w
+        st.sidebar.info("Les lignes rouges délimitent les objets.")
+
+    if processed_img is not None:
+        with col2:
+            st.subheader("Résultat Segmentation")
+            # Handle grayscale vs color
+            if len(processed_img.shape) == 2:
+                st.image(processed_img, use_container_width=True, channels="GRAY")
+            else:
+                st.image(cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB), use_container_width=True)
+
+elif app_mode == "3. Analyse Classique (Mesurer)":
+    st.sidebar.subheader("Détection de Contours")
+    
+    low_thresh = st.sidebar.slider("Seuil Bas (Canny)", 0, 255, 50)
+    high_thresh = st.sidebar.slider("Seuil Haut (Canny)", 0, 255, 150)
+    
+    edges = apply_canny_edge_detection(image_cv, low_thresh, high_thresh)
+    
+    with col2:
+        st.subheader("Contours (Canny)")
+        st.image(edges, use_container_width=True, channels="GRAY")
+        
+    st.subheader("Extraction deactéristiques (Features)")
+    if st.button("Calculer les propriétés"):
+        features, contours = extract_geometric_features(edges)
+        
+        # Draw on original
+        result_img = draw_features(image_cv, features, contours)
+        st.image(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB), caption="Contours détectés", use_container_width=True)
+        
+        st.write(f"Nombre d'objets détectés: {len(features)}")
+        if len(features) > 0:
+            import pandas as pd
+            df = pd.DataFrame(features)
+            # Remove the contour object column for display
+            display_df = df.drop(columns=["contour"])
+            st.dataframe(display_df)
+
+    st.divider()
+    st.subheader("Histogramme de Couleur")
+    hists = extract_color_histogram(image_cv)
+    if hists:
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax.plot(hists[0], color='red', label='Red')
+        ax.plot(hists[1], color='green', label='Green')
+        ax.plot(hists[2], color='blue', label='Blue')
+        ax.set_title("Répartition des intensités")
+        st.pyplot(fig)
+
+elif app_mode == "4. Deep Learning (Classifier)":
+    st.sidebar.subheader("Configuration du Modèle")
+    
+    # NEW: Select Task
+    task_type = st.sidebar.selectbox("Tâche / Dataset", 
+                                     ["General (ImageNet)", 
+                                      "CIFAR-10 Classification"])
+    
+    # 1. Choose Architecture
+    if task_type == "CIFAR-10 Classification":
+        # User requested ONLY Hybrid (MobileNet)
+        arch_options = ["Hybrid (MobileNet)"]
+    else:
+        arch_options = ["ResNet50", "MobileNetV2", "InceptionV3", "Vision Transformer (ViT)"]
+        
+    model_arch = st.sidebar.selectbox("Architecture", arch_options)
+    
+    # 2. Choose Mode (Basic/ImageNet or Custom Weights/Local Models)
+    # For CIFAR-10, we now ALWAYS look in 'models/' folder.
+    model_path = None
+    
+    if task_type == "CIFAR-10 Classification":
+        use_custom_weights = True # Implicitly true
+        
+        # Only one expected filename now
+        expected_filename = "mobilenetv2_cifar10_animals.keras"
+            
+        model_path = os.path.join("models", expected_filename)
+        
+        # Check if exists
+        if os.path.exists(model_path):
+            st.sidebar.success(f"Modèle trouvé: {expected_filename}")
+        else:
+            st.sidebar.warning(f"Modèle non trouvé: {expected_filename}")
+            st.sidebar.info(f"Veuillez placer le fichier '{expected_filename}' dans le dossier 'models'.")
+            model_path = None # Prevent loading
+            
+    elif task_type == "General (ImageNet)" and (model_arch == "Hybrid (Custom)" or "Hybrid" in model_arch):
+         # Legacy or fallback for ImageNet Hybrid if someone tries it
+         use_custom_weights = True
+         st.sidebar.info("Veuillez charger votre modèle.")
+         # ... (fallthrough to existing uploader logic below for non-CIFAR cases or different setup)
+    else:
+        # Standard ImageNet cases
+        use_custom_weights = st.sidebar.checkbox("Utiliser mes propres poids (.h5/.keras)", value=False)
+    
+    # Logic for File Uploader (ONLY if NOT CIFAR-10, as CIFAR-10 now uses local folder)
+    if not (task_type == "CIFAR-10 Classification"):
+        if use_custom_weights:
+            uploaded_model = st.sidebar.file_uploader(f"Charger poids pour {model_arch}", type=["h5", "keras"])
+            
+            if uploaded_model:
+                # Save temporarily, preserving extension
+                file_ext = os.path.splitext(uploaded_model.name)[1]
+                if not file_ext:
+                     file_ext = ".h5" 
+                
+                # Sanitize filename components
+                safe_arch = model_arch.replace(" ", "_").replace("(", "").replace(")", "")
+                safe_task = task_type.split()[0]
+                
+                model_path = os.path.join("data", f"temp_{safe_arch}_{safe_task}{file_ext}")
+                
+                os.makedirs("data", exist_ok=True)
+                
+                with open(model_path, "wb") as f:
+                    f.write(uploaded_model.getbuffer())
+                st.sidebar.success(f"Poids chargés: {uploaded_model.name}")
+            else:
+                 st.sidebar.warning("Veuillez uploader un fichier.")
+    
+    st.subheader(f"{task_type} - {model_arch}")
+    
+    # Block execution if custom weights needed but missing
+    blocked = False
+    if use_custom_weights and not model_path:
+        st.info("En attente du fichier de poids...")
+        blocked = True
+        
+    if not blocked:
+        if st.button("Lancer la Classification"):
+            with st.spinner(f"Chargement {model_arch} et Prédiction..."):
+                try:
+                    # Determine dataset tag for classifier
+                    dataset_tag = 'imagenet'
+                    if task_type == "CIFAR-10 Classification":
+                        dataset_tag = 'cifar10'
+                    elif use_custom_weights: 
+                        dataset_tag = 'imagenet' # Custom weights on general = imagenet classes usually, or we could handle generic
+                    
+                    # Initialize classifier
+                    classifier = ImageClassifier(model_name=model_arch, 
+                                               model_path=model_path,
+                                               dataset=dataset_tag)
+                    
+                    predictions = classifier.predict(image_cv)
+                    
+                    if predictions:
+                        with col2:
+                            st.subheader("Résultats")
+                            for i, (uid, label, prob) in enumerate(predictions):
+                                st.write(f"**{label}**: {prob*100:.2f}%")
+                                st.progress(float(prob))
+                            
+                            if not use_custom_weights and dataset_tag == 'imagenet':
+                                st.caption("Résultats basés sur ImageNet (1000 classes).")
+                            elif dataset_tag == 'cifar10':
+                                st.caption("Résultats basés sur CIFAR-10.")
+
+                except OSError as e:
+                    if "file signature not found" in str(e) or "Unable to synchronously open file" in str(e):
+                        st.error("Erreur: Le fichier de poids semble invalide ou corrompu. Assurez-vous d'uploader un fichier .h5 ou .keras valide.")
+                    else:
+                        st.error(f"Erreur d'ouverture du fichier: {e}")
+                except Exception as e:
+                    st.error(f"Erreur lors de la classification: {e}")
+                    st.exception(e)
+
+

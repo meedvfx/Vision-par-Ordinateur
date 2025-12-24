@@ -1,0 +1,163 @@
+/* Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+html,
+body,
+[class*="css"] {
+    font-family: 'Outfit', sans-serif;
+}
+
+/* Background & Main Container */
+.stApp {
+    background: radial-gradient(circle at 10% 20%, rgb(15, 17, 26) 0%, rgb(15, 15, 20) 90.2%);
+    background-attachment: fixed;
+    color: #e0e6ed;
+}
+
+/* Sidebar Styling - Glassmorphism */
+[data-testid="stSidebar"] {
+    background-color: rgba(22, 27, 34, 0.85);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span {
+    color: #a0aab5 !important;
+}
+
+/* Typography */
+h1 {
+    font-weight: 800 !important;
+    letter-spacing: -1px;
+    background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding-bottom: 0.5rem;
+    text-shadow: 0 0 30px rgba(102, 166, 255, 0.3);
+}
+
+h2,
+h3 {
+    color: #f0f4f8 !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.5px;
+}
+
+/* Cards / Containers */
+div.css-1r6slb0,
+div.stDataFrame,
+div[data-testid="stImage"] {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 10px;
+    backdrop-filter: blur(5px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+div[data-testid="stImage"]:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(102, 166, 255, 0.3);
+}
+
+/* Buttons - Neon Glow */
+.stButton>button {
+    background: transparent;
+    border: 1px solid #66a6ff;
+    color: #66a6ff;
+    border-radius: 12px;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.stButton>button:hover {
+    background: linear-gradient(90deg, #66a6ff 0%, #89f7fe 100%);
+    color: #0b0f19;
+    box-shadow: 0 0 20px rgba(102, 166, 255, 0.5);
+    border: 1px solid transparent;
+}
+
+.stButton>button:active {
+    transform: scale(0.98);
+}
+
+/* Inputs & Selectboxes */
+.stSelectbox>div>div,
+.stMultiSelect>div>div,
+.stTextInput>div>div {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: white;
+}
+
+.stSelectbox>div>div:hover {
+    border-color: #66a6ff;
+}
+
+div[data-baseweb="select"]>div {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: none !important;
+    color: white !important;
+}
+
+/* Radio Buttons */
+div.row-widget.stRadio>div {
+    background-color: rgba(255, 255, 255, 0.03);
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Sliders - Precision Targeting */
+div[data-baseweb="slider"]>div:first-child {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+div[role="slider"] {
+    background-color: #66a6ff !important;
+    box-shadow: 0 0 10px rgba(102, 166, 255, 0.8) !important;
+    border: 2px solid white !important;
+}
+
+div[data-testid="stSlider"] label {
+    color: #e0e6ed !important;
+    font-weight: 600;
+}
+
+div[data-testid="stSlider"] div[data-testid="stMarkdownContainer"] p {
+    color: #a0aab5 !important;
+}
+
+/* Expander */
+.streamlit-expanderHeader {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px !important;
+    color: #e0e6ed !important;
+}
+
+/* Dividers */
+hr {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Markdown Text Color Force */
+.stMarkdown p,
+.stMarkdown li,
+.stMarkdown span {
+    color: #cfd6e6 !important;
+}
+
+/* Tables */
+[data-testid="stDataFrame"] {
+    background: transparent !important;
+}
