@@ -76,6 +76,18 @@ streamlit run app.py
 
 L'application s'ouvrira automatiquement dans votre navigateur par défaut.
 
-## Auteur
+---
 
-Projet développé pour démontrer les capacités de la vision par ordinateur moderne, alliant techniques classiques et intelligence artificielle.
+## 👨‍💻 Auteur
+
+Ce projet a été développé par **Mohamed ZAHZOUH**.
+
+- 🌍 **LinkedIn** : [Mohamed ZAHZOUH](https://www.linkedin.com/in/mohamed-zahzouh-1402a7318/)
+- 📧 **Contact** : [mohamedzahzouh2006@gmail.com](mailto:mohamedzahzouh2006@gmail.com)
+
+---
+
+<center>
+  <sub>Réalisé avec ❤️ et Python.</sub>
+</center>
+
