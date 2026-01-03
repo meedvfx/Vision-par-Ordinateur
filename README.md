@@ -1,4 +1,4 @@
-# 👁️ vision par Ordinateur (CV Mastery)
+# 👁️ Vision par Ordinateur
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
